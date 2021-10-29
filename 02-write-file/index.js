@@ -3,15 +3,19 @@ const path = require('path');
 const readline = require('readline');
 
 const process = require('process');
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  prompt: 'Write something, please!\n'
+});
 
 const newFileName = path.join(__dirname, 'text.txt');
 const newFile = fs.createWriteStream(newFileName);
 
-console.log('Write something, please!');
+rl.prompt();
 
 rl.on('line', (input) => {
-  (input.toString().trim() == 'exit')
+  (input.trim() == 'exit')
     ? rl.close()
     : newFile.write(input + '\n');
 });
@@ -19,6 +23,6 @@ rl.on('line', (input) => {
 rl.on('SIGINT', () => rl.close());
 
 rl.on('close', () => {
-  console.log('The end!!!!!');
+  process.stdout.write('The end!!!!!');
   newFile.end();
 });
