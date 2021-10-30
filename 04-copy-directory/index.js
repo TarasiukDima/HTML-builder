@@ -23,3 +23,5 @@ const copyDir = (folderName, newFilderName) => {
 };
 
 copyDir(folderPath, newfolderPath);
+
+module.exports = copyDir;
