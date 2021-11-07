@@ -13,7 +13,7 @@ fsPromises.readdir(folderPath, { withFileTypes: true })
 
         const fileExtName = path.extname(el.name);
         const fileName = path.basename(el.name, fileExtName);
-        const fileSize = Math.ceil(stats.size / 1024);
+        const fileSize = stats.size / 1024;
 
         console.log(`${fileName} - ${fileExtName.slice(1)} - ${fileSize}kb`);
       });
