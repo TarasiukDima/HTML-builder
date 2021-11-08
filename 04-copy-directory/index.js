@@ -5,21 +5,46 @@ const path = require('path');
 const folderPath = path.join(__dirname, 'files');
 const newfolderPath = path.join(__dirname, 'files-copy');
 
-const copyDir = (folderName, newFilderName) => {
-  fs.access(newFilderName, (err) => {
-    if (err) {
-      fsPromises.mkdir(newFilderName, { recursive: true })
-        .catch(err => console.log(err));
-    }
 
-    fsPromises.readdir(folderName, { withFileTypes: true })
-      .then(data => {
-        data.forEach(el => {
-          fsPromises.copyFile(path.join(folderName, el.name), path.join(newFilderName, el.name));
-        });
-      })
-      .catch(err => console.log(err));
+const readFolderDoCb = (folderName, cb, agsListCb=[]) => {
+  fs.readdir(folderName, (err, filesList) => {
+    if (err) throw err;
+    cb(filesList, folderName, ...agsListCb);
   });
+};
+
+const copyFiles = (filesList, folderName, newFolderName) => {
+  filesList.forEach(oneFile => {
+    fs.copyFile(
+      path.join(folderName, oneFile),
+      path.join(newFolderName, oneFile),
+      () => {}
+    );
+  });
+};
+
+const deleteFiles = (filesList, deletefolderName) => {
+  filesList.forEach(el => {
+    fs.unlink(
+      path.join(deletefolderName, el),
+      (err) => {
+        if (err) throw err;
+      }
+    );
+  });
+};
+
+const copyDir = (folderName, newFolderName) => {
+  fsPromises.mkdir(newFolderName, { recursive: true })
+    .then(() => {
+      readFolderDoCb(newFolderName, deleteFiles);
+    })
+    .then(() => {
+      readFolderDoCb(folderName, copyFiles, [newFolderName]);
+    })
+    .catch((err) => {
+      throw err;
+    });
 };
 
 copyDir(folderPath, newfolderPath);
