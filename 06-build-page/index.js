@@ -6,20 +6,6 @@ const copyDir = require('../04-copy-directory');
 const bundleCss = require('../05-merge-styles');
 
 
-/* check folder exist or not and do something start */
-const checkFolderExistDoCb = (folderName, cb, arrArgsForCB) => {
-  fs.access(folderName, (err) => {
-    if (err) {
-      fsPromises.mkdir(folderName, { recursive: true })
-        .then(() => cb(...arrArgsForCB));
-    } else {
-      cb(...arrArgsForCB);
-    }
-  });
-};
-/* check folder exist or not and do something end */
-
-
 /* read folder and do something start */
 const readFolderDoCb = (readFolderUrl, cbForData, arrArgsForCB) => {
   fsPromises.readdir(readFolderUrl, { withFileTypes: true })
@@ -29,82 +15,40 @@ const readFolderDoCb = (readFolderUrl, cbForData, arrArgsForCB) => {
 /* read folder and do something end */
 
 
-/* copy all files and folders from folder start */
-const copyAllFromTo = (data, fromFolder, toFolder) => {
-  data.forEach(el => {
-    if (el.isFile()) {
-      fsPromises.copyFile(
-        path.join(fromFolder, el.name),
-        path.join(toFolder, el.name)
-      )
-        .catch(err => console.log(err));
-
-    } else {
-      checkFolderExistDoCb(
-        path.join(toFolder, el.name),
-        copyDir,
-        [
-          path.join(fromFolder, el.name),
-          path.join(toFolder, el.name)
-        ]
-      );
-    }
-  });
-};
-/* copy all files and folders from folder end */
-
-
-/* copy all from asssets folder start */
-const readAndCopyAssetsFolder = (folderNameForRead, outputFolderName) => {
-  const folderAssets = path.join(__dirname, folderNameForRead);
-  const newfolderAssets = path.join(__dirname, outputFolderName, folderNameForRead);
-
-  checkFolderExistDoCb(
-    newfolderAssets,
-    readFolderDoCb,
-    [
-      folderAssets,
-      copyAllFromTo,
-      [
-        folderAssets,
-        newfolderAssets
-      ]
-
-    ]
-  );
-};
-/* copy all from asssets folder end */
-
-
 /* build html file start */
-const cbForComponents = (data, outputFileHtml) => {
-  const outputHTMLContent = fs.createReadStream(outputFileHtml, 'utf-8');
-  const regForVarients = /{{.*}}/gi;
+const writeTextInFile = (content, compName, text, file) => {
+  content = content.replace(compName, text);
+  fs.writeFile(file, content, (err) => {
+    if (err) throw err;
+  });
 
+  return content;
+};
+
+const cbForComponents = (listHtmlComponents, outputFileHtml) => {
+  const outputHTMLContent = fs.createReadStream(outputFileHtml, 'utf-8');
 
   outputHTMLContent.on('data', (text) => {
-    const arrComponentsInHTML = text.match(regForVarients);
+    const regForVarients = /{{.*}}/gi;
+    const arrNamesComponentsInHtml = text.match(regForVarients);
+    let arrComponentsFilesName = [];
     let newContent = text;
 
-    arrComponentsInHTML.forEach(el => {
-      const elName = el.slice(2, -2);
+    listHtmlComponents.forEach(el => arrComponentsFilesName.push(el.name));
 
-      data.forEach(oneCompomemt => {
-        if (oneCompomemt.name == elName + '.html') {
-          const needComponentPath = path.join(__dirname, 'components', oneCompomemt.name);
-          const componentComtent = fs.createReadStream(needComponentPath, 'utf-8');
+    arrNamesComponentsInHtml.forEach(oneComponent => {
+      const elName = oneComponent.slice(2, -2);
 
-          componentComtent.on('data', (input) => {
-            newContent = newContent.replace(el, input);
-          });
+      if (arrComponentsFilesName.indexOf(elName + '.html') !== -1) {
+        const needComponentPath = path.join(__dirname, 'components', elName + '.html');
+        const componentComtent = fs.createReadStream(needComponentPath, 'utf-8');
 
-          componentComtent.on('end', () => {
-            fs.writeFile(outputFileHtml, newContent, (err) => {
-              if (err) throw err;
-            });
-          });
-        }
-      });
+        componentComtent.on('data', (input) => {
+          newContent = writeTextInFile(newContent, oneComponent, input, outputFileHtml);
+        });
+      } else {
+        newContent = writeTextInFile(newContent, oneComponent, '', outputFileHtml);
+      }
     });
   });
 };
@@ -117,28 +61,20 @@ const bundleHtmlFile = () => {
   fsPromises.copyFile(inputFileHtml, outputFileHtml)
     .then(() => {
       readFolderDoCb(componentsFolder, cbForComponents, [outputFileHtml]);
-    })
-    .catch(err => console.log(err));
-
+    });
 };
 /* build html file end */
 
 
 
 /* add content in new build folder start */
-const buildContentInNewDirectory = (outputPlaceAssets, outputFolderName) => {
+const buildContentInNewDirectory = (outputPathFolder) => {
+  const folderAssets = path.join(__dirname, 'assets');
+  const outputPathFolderAssets = path.join(outputPathFolder, 'assets');
   const cssFolder = path.join(__dirname, 'styles');
   const outputCssFolder = path.join(__dirname, 'project-dist', 'style.css');
 
-  checkFolderExistDoCb(
-    outputPlaceAssets,
-    readAndCopyAssetsFolder,
-    [
-      'assets',
-      outputFolderName
-    ]
-  );
-
+  copyDir(folderAssets, outputPathFolderAssets);
   bundleCss(cssFolder, outputCssFolder);
   bundleHtmlFile();
 };
@@ -147,18 +83,18 @@ const buildContentInNewDirectory = (outputPlaceAssets, outputFolderName) => {
 
 /* build script start */
 const bundlePage = (outputFolderName) => {
-  const outputPlace = path.join(__dirname, outputFolderName);
-  const outputPlaceAssets = path.join(outputPlace, 'assets');
+  const outputPathFolder = path.join(__dirname, outputFolderName);
 
-  checkFolderExistDoCb(
-    outputPlace,
-    buildContentInNewDirectory,
-    [
-      outputPlaceAssets,
-      outputFolderName
-    ]
-
-  );
+  fsPromises.rm(outputPathFolder, { force: true, recursive: true })
+    .then(() => {
+      fsPromises.mkdir(outputPathFolder, { recursive: true })
+        .then(() => {
+          buildContentInNewDirectory(outputPathFolder);
+        })
+        .catch((err) => {
+          throw err;
+        });
+    });
 };
 /* build script end */
 bundlePage('project-dist');
