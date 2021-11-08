@@ -6,44 +6,54 @@ const folderPath = path.join(__dirname, 'files');
 const newfolderPath = path.join(__dirname, 'files-copy');
 
 
-const readFolderDoCb = (folderName, cb, agsListCb=[]) => {
-  fs.readdir(folderName, (err, filesList) => {
-    if (err) throw err;
-    cb(filesList, folderName, ...agsListCb);
-  });
+const readFolderDoCb = (folderName, cb, agsListCb = []) => {
+  fsPromises.readdir(folderName, { withFileTypes: true })
+    .then((data) => {
+      cb(data, folderName, ...agsListCb);
+    })
+    .catch(err => {
+      throw err;
+    });
 };
 
 const copyFiles = (filesList, folderName, newFolderName) => {
-  filesList.forEach(oneFile => {
-    fs.copyFile(
-      path.join(folderName, oneFile),
-      path.join(newFolderName, oneFile),
-      () => {}
-    );
-  });
-};
+  if (!filesList) return;
 
-const deleteFiles = (filesList, deletefolderName) => {
-  filesList.forEach(el => {
-    fs.unlink(
-      path.join(deletefolderName, el),
-      (err) => {
-        if (err) throw err;
-      }
-    );
+  filesList.forEach(oneFile => {
+    if (oneFile.isFile()) {
+      fs.copyFile(
+        path.join(folderName, oneFile.name),
+        path.join(newFolderName, oneFile.name),
+        () => { }
+      );
+    } else {
+      const newFolderPath = path.join(newFolderName, oneFile.name);
+
+      fsPromises.mkdir(newFolderPath, { recursive: true })
+        .then(() => {
+          readFolderDoCb(
+            path.join(folderName, oneFile.name),
+            copyFiles,
+            [newFolderPath]
+          );
+        })
+        .catch(err => {
+          throw err;
+        });
+    }
   });
 };
 
 const copyDir = (folderName, newFolderName) => {
-  fsPromises.mkdir(newFolderName, { recursive: true })
+  fsPromises.rm( newFolderName, { force: true, recursive: true } )
     .then(() => {
-      readFolderDoCb(newFolderName, deleteFiles);
-    })
-    .then(() => {
-      readFolderDoCb(folderName, copyFiles, [newFolderName]);
-    })
-    .catch((err) => {
-      throw err;
+      fsPromises.mkdir(newFolderName, { recursive: true })
+        .then(() => {
+          readFolderDoCb(folderName, copyFiles, [newFolderName]);
+        })
+        .catch((err) => {
+          throw err;
+        });
     });
 };
 
