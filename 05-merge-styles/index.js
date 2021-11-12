@@ -25,6 +25,9 @@ const bundleCss = (inputF, outputF) => {
   });
 };
 
-bundleCss(cssFolder, outputFolder);
-
-module.exports = bundleCss;
+if (module.parent) {
+  module.exports = bundleCss;
+}
+else {
+  bundleCss(cssFolder, outputFolder);
+}

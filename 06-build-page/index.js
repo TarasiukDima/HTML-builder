@@ -2,8 +2,8 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const path = require('path');
 
-const copyDir = require('../04-copy-directory');
-const bundleCss = require('../05-merge-styles');
+const copyDir = require('./../04-copy-directory/index.js');
+const bundleCss = require('./../05-merge-styles/index.js');
 
 
 /* read folder and do something start */

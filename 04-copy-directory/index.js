@@ -57,6 +57,10 @@ const copyDir = (folderName, newFolderName) => {
     });
 };
 
-copyDir(folderPath, newfolderPath);
 
-module.exports = copyDir;
+if (module.parent) {
+  module.exports = copyDir;
+}
+else {
+  copyDir(folderPath, newfolderPath);
+}
